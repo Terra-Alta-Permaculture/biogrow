@@ -1,5 +1,7 @@
 import { generateId } from './helpers';
 import { PROMO_CODES, TRIAL_DAYS } from '../data/promoCodes';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { uploadLocalData } from '../lib/syncEngine';
 
 const USERS_KEY = 'biogrow-users';
 const AUTH_KEY = 'biogrow-auth';
@@ -32,14 +34,65 @@ function saveUsers(users) {
 export async function signUp({ email, password, name, farmName }) {
   try {
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' };
+    }
+
+    // --- Supabase mode ---
+    if (isSupabaseConfigured()) {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (authError) return { success: false, error: authError.message };
+
+      const supaUser = authData.user;
+      if (!supaUser) return { success: false, error: 'Sign up failed — please try again' };
+
+      // Update profile with name/farm
+      await supabase.from('profiles').update({
+        name: name.trim(),
+        farm_name: farmName?.trim() || '',
+      }).eq('id', supaUser.id);
+
+      const now = new Date().toISOString();
+      const trialEnd = new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString();
+
+      const user = {
+        id: supaUser.id,
+        email: normalizedEmail,
+        createdAt: now,
+        authMode: 'supabase',
+        profile: {
+          name: name.trim(),
+          farmName: farmName?.trim() || '',
+          location: '',
+          farmSize: '',
+          growingPhilosophy: 'biointensive',
+          avatar: 'seedling',
+          bio: '',
+        },
+        subscription: {
+          plan: 'trial',
+          trialStartDate: now,
+          trialEndDate: trialEnd,
+          paidAt: null,
+          promoCode: null,
+          promoDiscount: 0,
+        },
+      };
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+      return { success: true, data: user };
+    }
+
+    // --- Local mode (fallback) ---
     const users = getUsers();
 
     if (users.find(u => u.email === normalizedEmail)) {
       return { success: false, error: 'An account with this email already exists' };
-    }
-
-    if (password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
     }
 
     const pwHash = await hashPassword(password);
@@ -71,11 +124,9 @@ export async function signUp({ email, password, name, farmName }) {
       },
     };
 
-    // Save to user registry (minimal data for login lookup)
     users.push({ id, email: normalizedEmail, passwordHash: pwHash });
     saveUsers(users);
 
-    // Save full user data under per-user key + active session
     localStorage.setItem(`biogrow-user-${id}`, JSON.stringify(user));
     localStorage.setItem(AUTH_KEY, JSON.stringify(user));
 
@@ -88,6 +139,62 @@ export async function signUp({ email, password, name, farmName }) {
 export async function signIn({ email, password }) {
   try {
     const normalizedEmail = email.trim().toLowerCase();
+
+    // --- Supabase mode ---
+    if (isSupabaseConfigured()) {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (authError) return { success: false, error: authError.message };
+
+      const supaUser = authData.user;
+      if (!supaUser) return { success: false, error: 'Sign in failed' };
+
+      // Load profile from Supabase
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, farm_name, avatar')
+        .eq('id', supaUser.id)
+        .single();
+
+      // Load subscription from Supabase
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', supaUser.id)
+        .single();
+
+      const user = {
+        id: supaUser.id,
+        email: normalizedEmail,
+        createdAt: supaUser.created_at,
+        authMode: 'supabase',
+        profile: {
+          name: profile?.name || '',
+          farmName: profile?.farm_name || '',
+          location: '',
+          farmSize: '',
+          growingPhilosophy: 'biointensive',
+          avatar: profile?.avatar || 'seedling',
+          bio: '',
+        },
+        subscription: {
+          plan: sub?.plan || 'trial',
+          trialStartDate: sub?.trial_start || supaUser.created_at,
+          trialEndDate: sub?.trial_end || new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString(),
+          paidAt: sub?.paid_at || null,
+          promoCode: null,
+          promoDiscount: 0,
+        },
+      };
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+      return { success: true, data: user };
+    }
+
+    // --- Local mode (fallback) ---
     const users = getUsers();
     const userEntry = users.find(u => u.email === normalizedEmail);
 
@@ -100,7 +207,6 @@ export async function signIn({ email, password }) {
       return { success: false, error: 'Incorrect password' };
     }
 
-    // Load full user data from per-user storage, then active session fallback
     let user;
     try {
       const perUserRaw = localStorage.getItem(`biogrow-user-${userEntry.id}`);
@@ -117,7 +223,6 @@ export async function signIn({ email, password }) {
     } catch {}
 
     if (!user) {
-      // Rebuild minimal user object (profile data may have been lost)
       const now = new Date().toISOString();
       user = {
         id: userEntry.id,
@@ -136,7 +241,10 @@ export async function signIn({ email, password }) {
   }
 }
 
-export function signOut() {
+export async function signOut() {
+  if (isSupabaseConfigured()) {
+    await supabase.auth.signOut().catch(() => {});
+  }
   localStorage.removeItem(AUTH_KEY);
   return { success: true };
 }
@@ -181,6 +289,49 @@ export function validatePromoCode(code) {
   if (!code) return null;
   const normalized = code.trim().toUpperCase();
   return PROMO_CODES[normalized] || null;
+}
+
+// --- Supabase migration for existing localStorage users ---
+
+export async function migrateToSupabase({ email, password }) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase is not configured' };
+  }
+
+  // Create Supabase auth account
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (authError) return { success: false, error: authError.message };
+
+  const supaUser = authData.user;
+  if (!supaUser) return { success: false, error: 'Migration failed — could not create account' };
+
+  // Load existing local user data
+  const localUser = getCurrentUser();
+  if (localUser?.profile) {
+    await supabase.from('profiles').update({
+      name: localUser.profile.name || '',
+      farm_name: localUser.profile.farmName || '',
+      avatar: localUser.profile.avatar || 'seedling',
+    }).eq('id', supaUser.id);
+  }
+
+  // Upload local farm data to Supabase
+  await uploadLocalData();
+
+  // Update local session to reflect Supabase auth
+  const user = {
+    ...localUser,
+    id: supaUser.id,
+    email,
+    authMode: 'supabase',
+  };
+  localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+
+  return { success: true, data: user };
 }
 
 // --- Avatar data ---

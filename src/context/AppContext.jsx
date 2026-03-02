@@ -4,6 +4,8 @@ import { defaultCrops } from '../data/crops';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { getCurrentUser, persistUser, signUp as authSignUp, signIn as authSignIn, signOut as authSignOut } from '../utils/auth';
 import { saveBackup, loadBackup } from '../utils/indexedDB';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { markDirty, pullFromSupabase, startAutoSync, stopAutoSync, syncOnce, onSyncStatus } from '../lib/syncEngine';
 
 const AppContext = createContext();
 
@@ -26,6 +28,8 @@ function saveToStorage(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     // Also backup to IndexedDB (fire-and-forget)
     saveBackup(data).catch(() => {});
+    // Mark dirty for Supabase sync
+    markDirty();
     return true;
   } catch (e) {
     console.warn('Failed to save data', e);
@@ -145,8 +149,9 @@ export function AppProvider({ children }) {
     return result;
   }, []);
 
-  const logout = useCallback(() => {
-    authSignOut();
+  const logout = useCallback(async () => {
+    stopAutoSync();
+    await authSignOut();
     setUser(null);
   }, []);
 
@@ -162,6 +167,33 @@ export function AppProvider({ children }) {
 
   const updateSubscription = useCallback((subUpdates) => {
     setUser(prev => prev ? { ...prev, subscription: { ...prev.subscription, ...subUpdates } } : null);
+  }, []);
+
+  // --- Supabase sync ---
+  const [syncStatus, setSyncStatus] = useState({ syncing: false, lastSynced: null, error: null });
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !user) return;
+
+    // Listen for sync status updates
+    const unsub = onSyncStatus(setSyncStatus);
+
+    // Pull latest data from Supabase on mount
+    pullFromSupabase().then(serverData => {
+      if (serverData) {
+        setState(prev => ({ ...prev, ...serverData }));
+      }
+      startAutoSync();
+    });
+
+    return () => {
+      unsub();
+      stopAutoSync();
+    };
+  }, [user]);
+
+  const syncNow = useCallback(async () => {
+    await syncOnce();
   }, []);
 
   // --- Recover from IndexedDB if localStorage was corrupted ---
@@ -308,6 +340,9 @@ export function AppProvider({ children }) {
       register,
       updateUserProfile,
       updateSubscription,
+      // Sync
+      syncStatus,
+      syncNow,
       // Toast
       toasts,
       showToast,

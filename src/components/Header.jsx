@@ -4,7 +4,7 @@ import { Modal, Button } from './shared';
 import { getAvatarEmoji } from '../utils/auth';
 
 export default function Header({ onProfileClick, onShowGuide }) {
-  const { theme, darkMode, setDarkMode, saveStatus, manualSave, exportData, importData, validateImport, showToast, user } = useApp();
+  const { theme, darkMode, setDarkMode, saveStatus, manualSave, exportData, importData, validateImport, showToast, user, syncStatus, syncNow } = useApp();
   const [importPreview, setImportPreview] = useState(null);
 
   const handleImport = () => {
@@ -97,6 +97,30 @@ export default function Header({ onProfileClick, onShowGuide }) {
           }} />
           {saveStatus === 'saved' ? 'Saved' : 'Saving...'}
         </div>
+        {syncNow && (
+          <button
+            onClick={syncNow}
+            title={syncStatus.error ? `Sync error: ${syncStatus.error}` : syncStatus.syncing ? 'Syncing...' : syncStatus.lastSynced ? `Last synced: ${new Date(syncStatus.lastSynced).toLocaleTimeString()}` : 'Sync now'}
+            aria-label="Sync data"
+            style={{
+              ...btnStyle(theme),
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '12px',
+              padding: '4px 10px',
+            }}
+          >
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: syncStatus.error ? '#ef5350' : syncStatus.syncing ? '#ffa726' : '#66bb6a',
+              display: 'inline-block',
+            }} />
+            {syncStatus.syncing ? 'Syncing' : 'Sync'}
+          </button>
+        )}
         {user && (
           <button
             onClick={onProfileClick}
