@@ -39,7 +39,7 @@ test.describe('Upgrade Flow', () => {
     // Enter valid promo code
     await page.getByPlaceholder('Enter code').fill('BIOGROW50');
     await page.getByRole('button', { name: /apply/i }).click();
-    await expect(page.getByText(/50% Student Discount applied/)).toBeVisible();
+    await expect(page.getByText(/50% Discount applied/)).toBeVisible();
   });
 
   test('trial expired shows lock screen', async ({ page }) => {

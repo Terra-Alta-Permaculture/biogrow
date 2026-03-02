@@ -122,6 +122,9 @@ export async function pullFromSupabase() {
   }
 }
 
+let visibilityHandler = null;
+let onlineHandler = null;
+
 export function startAutoSync() {
   if (!isSupabaseConfigured()) return;
 
@@ -133,7 +136,7 @@ export function startAutoSync() {
   }, 60000);
 
   // Sync when tab becomes visible
-  document.addEventListener('visibilitychange', () => {
+  visibilityHandler = () => {
     if (document.visibilityState === 'visible') {
       if (isDirty()) {
         pushToSupabase().catch(() => {});
@@ -141,20 +144,30 @@ export function startAutoSync() {
         pullFromSupabase().catch(() => {});
       }
     }
-  });
+  };
+  document.addEventListener('visibilitychange', visibilityHandler);
 
   // Sync when coming back online
-  window.addEventListener('online', () => {
+  onlineHandler = () => {
     if (isDirty()) {
       pushToSupabase().catch(() => {});
     }
-  });
+  };
+  window.addEventListener('online', onlineHandler);
 }
 
 export function stopAutoSync() {
   if (syncInterval) {
     clearInterval(syncInterval);
     syncInterval = null;
+  }
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler);
+    visibilityHandler = null;
+  }
+  if (onlineHandler) {
+    window.removeEventListener('online', onlineHandler);
+    onlineHandler = null;
   }
 }
 

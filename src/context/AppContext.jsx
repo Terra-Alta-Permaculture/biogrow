@@ -206,7 +206,7 @@ export function AppProvider({ children }) {
     if (corrupted) {
       loadBackup().then(backup => {
         if (backup?.data) {
-          console.log('Recovered data from IndexedDB backup');
+          console.warn('Recovered data from IndexedDB backup');
           setState(prev => ({ ...defaultState, ...backup.data }));
         }
       });

@@ -13,4 +13,4 @@ export const PAYPAL_CONFIG = {
 };
 
 // Fallback for local-only mode (no Supabase)
-export const PAYPAL_ME_URL = 'https://paypal.me/PLACEHOLDER';
+export const PAYPAL_ME_URL = 'https://paypal.me/TerraAltaPermaculture';
