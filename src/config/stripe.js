@@ -8,7 +8,7 @@
 // 5. Promo codes in promoCodes.js should match codes created in Stripe Dashboard
 
 export const STRIPE_CONFIG = {
-  paymentLinkUrl: import.meta.env.VITE_STRIPE_PAYMENT_LINK || 'https://buy.stripe.com/PLACEHOLDER',
+  paymentLinkUrl: import.meta.env.VITE_STRIPE_PAYMENT_LINK || 'https://buy.stripe.com/5kQbJ25p0gxMgKS3N30sU00',
   successUrl: window.location.origin + '?payment_success=true',
   cancelUrl: window.location.origin + '?payment_cancelled=true',
 };

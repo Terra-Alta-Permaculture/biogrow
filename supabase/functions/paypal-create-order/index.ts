@@ -12,7 +12,9 @@ const BASE_PRICE = 99.99;
 
 // Server-side promo code validation (must match src/data/promoCodes.js)
 const PROMO_DISCOUNTS: Record<string, number> = {
+  'BIOGROW100': 1.00,
   'BIOGROW50': 0.50,
+  'BIOGROW25': 0.25,
   'TEACHER2026': 0.50,
   'EARLYFARM': 0.50,
   'STUDENT50': 0.50,
