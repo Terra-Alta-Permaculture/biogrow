@@ -25,3 +25,4 @@ coverage/
 
 # Supabase local
 .supabase/
+.vercel

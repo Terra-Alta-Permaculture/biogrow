@@ -10,7 +10,7 @@ test.describe('Responsive Layout', () => {
     await createTestAccount(page);
 
     // App should render and be usable at mobile width
-    await expect(page.getByRole('tablist').or(page.getByRole('navigation'))).toBeVisible();
+    await expect(page.getByRole('tablist', { name: /primary tabs/i })).toBeVisible();
   });
 
   test('tablet viewport shows the app correctly', async ({ page }) => {
@@ -20,6 +20,6 @@ test.describe('Responsive Layout', () => {
     await page.reload();
     await createTestAccount(page);
 
-    await expect(page.getByRole('tablist').or(page.getByRole('navigation'))).toBeVisible();
+    await expect(page.getByRole('tablist', { name: /primary tabs/i })).toBeVisible();
   });
 });

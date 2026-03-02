@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearStorage, createTestAccount, loginAs } from './helpers.js';
+import { clearStorage, createTestAccount, loginAs, openToolsTab } from './helpers.js';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,7 +9,7 @@ test.describe('Authentication', () => {
   });
 
   test('shows auth screen on first visit', async ({ page }) => {
-    await expect(page.getByText(/create account/i).first()).toBeVisible();
+    await expect(page.getByText(/sign in/i).first()).toBeVisible();
   });
 
   test('creates a new account', async ({ page }) => {
@@ -21,12 +21,12 @@ test.describe('Authentication', () => {
   test('logs out and back in', async ({ page }) => {
     const creds = await createTestAccount(page);
 
-    // Find and click profile/logout
-    await page.getByRole('button', { name: /profile/i }).click();
+    // Open profile from Tools menu and click logout
+    await openToolsTab(page, 'profile');
     await page.getByRole('button', { name: /log ?out|sign ?out/i }).click();
 
     // Should see auth screen
-    await expect(page.getByText(/sign in|log in/i).first()).toBeVisible();
+    await expect(page.getByText(/sign in/i).first()).toBeVisible();
 
     // Log back in
     await loginAs(page, creds.email, creds.password);
@@ -34,9 +34,9 @@ test.describe('Authentication', () => {
   });
 
   test('shows error for invalid credentials', async ({ page }) => {
-    await page.getByLabel(/email/i).fill('nobody@example.com');
-    await page.locator('input[type="password"]').first().fill('wrongpass');
-    await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await page.getByPlaceholder('farmer@example.com').fill('nobody@example.com');
+    await page.getByPlaceholder('Your password').fill('wrongpass');
+    await page.locator('button[type="submit"]').click();
 
     await expect(page.getByText(/no account|incorrect|invalid/i).first()).toBeVisible();
   });

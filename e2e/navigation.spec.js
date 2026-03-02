@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearStorage, createTestAccount } from './helpers.js';
+import { clearStorage, createTestAccount, openToolsTab } from './helpers.js';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,22 +9,22 @@ test.describe('Navigation', () => {
     await createTestAccount(page);
   });
 
-  test('switches between tabs', async ({ page }) => {
+  test('switches between primary tabs', async ({ page }) => {
     const tablist = page.getByRole('tablist');
     await expect(tablist).toBeVisible();
 
-    // Click Crops tab
-    await page.getByRole('tab', { name: /crops/i }).click();
+    // Click Nursery tab (primary)
+    await page.getByRole('tab', { name: /nursery/i }).click();
     await expect(page.getByRole('tabpanel')).toBeVisible();
 
-    // Click Harvest tab
+    // Click Harvest tab (primary)
     await page.getByRole('tab', { name: /harvest/i }).click();
     await expect(page.getByRole('tabpanel')).toBeVisible();
   });
 
   test('URL stays the same when switching tabs (SPA)', async ({ page }) => {
     const initialUrl = page.url();
-    await page.getByRole('tab', { name: /crops/i }).click();
+    await page.getByRole('tab', { name: /harvest/i }).click();
     expect(page.url()).toBe(initialUrl);
   });
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearStorage, createTestAccount } from './helpers.js';
+import { clearStorage, createTestAccount, dismissGuideModal } from './helpers.js';
 
 test.describe('Data Persistence', () => {
   test('account persists after reload', async ({ page }) => {
@@ -24,16 +24,24 @@ test.describe('Data Persistence', () => {
     await page.reload();
     await createTestAccount(page);
 
-    // Add a zone
-    await page.getByRole('tab', { name: /farm|beds|zone/i }).click();
-    await page.getByRole('button', { name: /add zone/i }).click();
+    // Add a zone via dialog
+    await page.getByRole('tab', { name: /farm/i }).click();
+    await page.getByRole('button', { name: /add zone/i }).first().click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('textbox', { name: /zone name/i }).fill('Zone 1');
+    await dialog.getByRole('button', { name: /add zone/i }).click();
+    await expect(page.getByText('Zone 1').first()).toBeVisible();
+
+    // Wait for localStorage save to complete (save indicator should show "Saved")
+    await expect(page.getByText('Saved')).toBeVisible({ timeout: 5000 });
 
     // Reload
     await page.reload();
     await page.waitForSelector('[role="tablist"]', { timeout: 10000 });
+    await dismissGuideModal(page);
 
     // Navigate back to farm tab — zone should still be there
-    await page.getByRole('tab', { name: /farm|beds|zone/i }).click();
+    await page.getByRole('tab', { name: /farm/i }).click();
     await expect(page.getByText(/zone 1/i).first()).toBeVisible();
   });
 });

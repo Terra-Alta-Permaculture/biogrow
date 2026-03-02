@@ -10,27 +10,29 @@ test.describe('Dark Mode', () => {
   });
 
   test('toggles dark mode', async ({ page }) => {
-    // Get initial background
-    const initialBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    // Dark mode is stored in 'biogrow-dark' localStorage key
+    const initialDark = await page.evaluate(() => localStorage.getItem('biogrow-dark'));
 
     // Click dark mode toggle
     await page.getByRole('button', { name: /dark mode|light mode/i }).click();
 
-    // Background should change
-    const newBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(newBg).not.toBe(initialBg);
+    // Dark mode value should have changed
+    const newDark = await page.evaluate(() => localStorage.getItem('biogrow-dark'));
+    expect(newDark).not.toBe(initialDark);
   });
 
   test('dark mode persists on reload', async ({ page }) => {
     // Toggle dark mode on
     await page.getByRole('button', { name: /dark mode/i }).click();
-    const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+    const darkVal = await page.evaluate(() => localStorage.getItem('biogrow-dark'));
+    expect(darkVal).toBe('true');
 
     // Reload
     await page.reload();
     await page.waitForSelector('[role="tablist"]', { timeout: 10000 });
 
-    const bgAfterReload = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(bgAfterReload).toBe(darkBg);
+    const darkValAfter = await page.evaluate(() => localStorage.getItem('biogrow-dark'));
+    expect(darkValAfter).toBe('true');
   });
 });

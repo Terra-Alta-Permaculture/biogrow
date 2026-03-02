@@ -1,4 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock supabase to null so auth tests run in local-only mode
+vi.mock('../lib/supabase', () => ({
+  supabase: null,
+  isSupabaseConfigured: () => false,
+}));
+
 import {
   hashPassword,
   signUp,
