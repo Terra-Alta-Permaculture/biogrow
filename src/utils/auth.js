@@ -291,6 +291,23 @@ export function validatePromoCode(code) {
   return PROMO_CODES[normalized] || null;
 }
 
+// Verify subscription state from Supabase (server-side truth)
+// Returns { plan, paid_at } or null if unavailable
+export async function verifySubscriptionFromSupabase(userId) {
+  if (!isSupabaseConfigured() || !userId) return null;
+  try {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('plan, paid_at')
+      .eq('user_id', userId)
+      .single();
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 // --- Supabase migration for existing localStorage users ---
 
 export async function migrateToSupabase({ email, password }) {

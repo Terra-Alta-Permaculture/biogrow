@@ -34,14 +34,14 @@ serve(async (req: Request) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.metadata?.user_id;
+        // Payment Links set client_reference_id on the session (not in metadata)
+        const userId = session.client_reference_id;
         if (!userId) break;
 
         await supabase.from('subscriptions').upsert({
           user_id: userId,
           plan: 'paid',
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: session.subscription as string,
+          stripe_customer_id: (session.customer as string) || null,
           paid_at: new Date().toISOString(),
         });
         break;

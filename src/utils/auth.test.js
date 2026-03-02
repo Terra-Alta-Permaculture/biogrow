@@ -17,6 +17,7 @@ import {
   isSubscriptionActive,
   validatePromoCode,
   getAvatarEmoji,
+  verifySubscriptionFromSupabase,
 } from './auth';
 
 beforeEach(() => {
@@ -182,5 +183,22 @@ describe('getAvatarEmoji', () => {
 
   it('returns seedling for unknown avatar', () => {
     expect(getAvatarEmoji('nonexistent')).toBe('\u{1F331}');
+  });
+});
+
+describe('verifySubscriptionFromSupabase', () => {
+  it('returns null when Supabase is not configured', async () => {
+    const result = await verifySubscriptionFromSupabase('some-user-id');
+    expect(result).toBeNull();
+  });
+
+  it('returns null for null userId', async () => {
+    const result = await verifySubscriptionFromSupabase(null);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for undefined userId', async () => {
+    const result = await verifySubscriptionFromSupabase(undefined);
+    expect(result).toBeNull();
   });
 });

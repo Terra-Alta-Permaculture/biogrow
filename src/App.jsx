@@ -6,10 +6,13 @@ import TabNav from './components/TabNav';
 import AuthScreen from './components/AuthScreen';
 import SubscriptionBanner from './components/SubscriptionBanner';
 import UpgradeModal from './components/UpgradeModal';
-import { isSubscriptionActive } from './utils/auth';
+import { isSubscriptionActive, verifySubscriptionFromSupabase } from './utils/auth';
+import { isSupabaseConfigured } from './lib/supabase';
 import WorkflowGuide from './components/WorkflowGuide';
 import ToastContainer from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import OfflineIndicator from './components/OfflineIndicator';
+import PWAUpdateBanner from './components/PWAUpdateBanner';
 
 const BedsTab = lazy(() => import('./tabs/BedsTab'));
 const TasksTab = lazy(() => import('./tabs/TasksTab'));
@@ -52,14 +55,36 @@ function AppContent() {
     requestAnimationFrame(() => { mainRef.current?.focus(); });
   };
 
-  // Detect Stripe payment redirect
+  // Detect payment redirect (Stripe returns with ?payment_success=true)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     if (params.get('payment_success') === 'true' && user) {
-      updateSubscription({ plan: 'paid', paidAt: new Date().toISOString() });
       window.history.replaceState({}, '', window.location.pathname);
-      showToast('Payment successful! Welcome to BioGrow Premium.', { type: 'success', duration: 8000 });
+
+      if (isSupabaseConfigured()) {
+        // Verify with server (webhook may take a moment)
+        const verify = async (attempts = 0) => {
+          const serverSub = await verifySubscriptionFromSupabase(user.id);
+          if (serverSub?.plan === 'paid') {
+            updateSubscription({ plan: 'paid', paidAt: serverSub.paid_at });
+            showToast('Payment confirmed! Welcome to BioGrow Premium.', { type: 'success', duration: 8000 });
+          } else if (attempts < 3) {
+            setTimeout(() => verify(attempts + 1), 2000);
+          } else {
+            // Webhook may be slow — trust the redirect as fallback
+            updateSubscription({ plan: 'paid', paidAt: new Date().toISOString() });
+            showToast('Payment successful! Welcome to BioGrow Premium.', { type: 'success', duration: 8000 });
+          }
+        };
+        verify();
+      } else {
+        // Local-only mode — trust the redirect param
+        updateSubscription({ plan: 'paid', paidAt: new Date().toISOString() });
+        showToast('Payment successful! Welcome to BioGrow Premium.', { type: 'success', duration: 8000 });
+      }
     }
+
     if (params.get('payment_cancelled') === 'true') {
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -191,6 +216,7 @@ function AppContent() {
         Skip to content
       </a>
       <Header onProfileClick={() => handleTabChange('profile')} onShowGuide={() => setShowGuide(true)} />
+      <OfflineIndicator />
       <SubscriptionBanner onUpgrade={() => setUpgradeModal(true)} />
       <TabNav activeTab={activeTab} setActiveTab={handleTabChange} />
       <main
@@ -256,6 +282,7 @@ function AppContent() {
       <UpgradeModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <WorkflowGuide open={!!guideOpen} onClose={() => setShowGuide(false)} />
       <ToastContainer />
+      <PWAUpdateBanner />
     </div>
   );
 }

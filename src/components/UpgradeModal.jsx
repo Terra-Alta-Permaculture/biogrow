@@ -1,16 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Modal, Button, FormField, Input } from './shared';
+import { Modal, Button } from './shared';
 import { validatePromoCode } from '../utils/auth';
 import { BASE_PRICE } from '../data/promoCodes';
-import { STRIPE_CONFIG, PAYPAL_CONFIG } from '../config/stripe';
+import { STRIPE_CONFIG } from '../config/stripe';
+import { PAYPAL_CONFIG, PAYPAL_ME_URL } from '../config/paypal';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+
+// Lazy-loaded PayPal components (loaded on first modal open)
+let PayPalScriptProvider = null;
+let PayPalButtons = null;
+let paypalLoadAttempted = false;
+
+function usePayPalSDK(shouldLoad) {
+  const [loaded, setLoaded] = useState(!!PayPalButtons);
+
+  useEffect(() => {
+    if (!shouldLoad || paypalLoadAttempted || PayPalButtons) return;
+    paypalLoadAttempted = true;
+
+    import('@paypal/react-paypal-js').then(mod => {
+      PayPalScriptProvider = mod.PayPalScriptProvider;
+      PayPalButtons = mod.PayPalButtons;
+      setLoaded(true);
+    }).catch(() => {
+      // SDK unavailable — will use fallback
+    });
+  }, [shouldLoad]);
+
+  return loaded;
+}
 
 export default function UpgradeModal({ open, onClose }) {
-  const { user, updateSubscription, theme } = useApp();
+  const { user, updateSubscription, theme, showToast } = useApp();
   const [promoInput, setPromoInput] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [paid, setPaid] = useState(false);
+  const [paypalError, setPaypalError] = useState('');
+
+  // Only attempt to load PayPal SDK when modal is open, Supabase is configured, and client ID exists
+  const shouldLoadPayPal = open && isSupabaseConfigured() && !!PAYPAL_CONFIG.clientId;
+  const paypalReady = usePayPalSDK(shouldLoadPayPal);
 
   if (!user) return null;
   const sub = user.subscription;
@@ -39,17 +70,20 @@ export default function UpgradeModal({ open, onClose }) {
     window.location.href = url.toString();
   };
 
-  const handlePayPalPay = () => {
-    const baseUrl = PAYPAL_CONFIG.paymentUrl;
-    const url = `${baseUrl}/${finalPrice}EUR`;
+  // Fallback PayPal.me redirect (for local-only mode or when SDK unavailable)
+  const handlePayPalFallback = () => {
+    const url = `${PAYPAL_ME_URL}/${finalPrice}EUR`;
     window.open(url, '_blank');
   };
+
+  const useSmartButtons = paypalReady && PayPalButtons && PayPalScriptProvider;
 
   const handleClose = () => {
     setPaid(false);
     setPromoInput('');
     setPromoError('');
     setPromoSuccess('');
+    setPaypalError('');
     onClose();
   };
 
@@ -144,6 +178,7 @@ export default function UpgradeModal({ open, onClose }) {
 
           {/* Payment buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Stripe Payment Link */}
             <button
               onClick={handleStripePay}
               style={{
@@ -165,27 +200,88 @@ export default function UpgradeModal({ open, onClose }) {
             >
               Pay €{finalPrice} — Card / Stripe
             </button>
-            <button
-              onClick={handlePayPalPay}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '10px',
-                border: `1.5px solid ${theme.border}`,
-                background: '#ffc439',
-                color: '#003087',
-                fontSize: '15px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontFamily: "'Libre Franklin', sans-serif",
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              Pay with PayPal
-            </button>
+
+            {/* PayPal Smart Buttons or fallback */}
+            {useSmartButtons ? (
+              <div style={{ minHeight: '48px' }}>
+                <PayPalScriptProvider options={{
+                  'client-id': PAYPAL_CONFIG.clientId,
+                  currency: PAYPAL_CONFIG.currency,
+                  intent: PAYPAL_CONFIG.intent,
+                }}>
+                  <PayPalButtons
+                    style={{
+                      layout: 'horizontal',
+                      color: 'gold',
+                      shape: 'rect',
+                      label: 'pay',
+                      height: 48,
+                      tagline: false,
+                    }}
+                    createOrder={async () => {
+                      setPaypalError('');
+                      const { data, error } = await supabase.functions.invoke('paypal-create-order', {
+                        body: { promoCode: sub.promoCode || '' },
+                      });
+                      if (error) {
+                        setPaypalError('Failed to create PayPal order. Please try again.');
+                        throw error;
+                      }
+                      return data.orderId;
+                    }}
+                    onApprove={async (data) => {
+                      setPaypalError('');
+                      const { data: captureData, error } = await supabase.functions.invoke('paypal-capture-order', {
+                        body: { orderId: data.orderID },
+                      });
+                      if (error || !captureData?.success) {
+                        setPaypalError('Payment capture failed. Please contact support.');
+                        return;
+                      }
+                      updateSubscription({ plan: 'paid', paidAt: new Date().toISOString() });
+                      setPaid(true);
+                      if (showToast) {
+                        showToast('Payment confirmed! Welcome to BioGrow Premium.', { type: 'success', duration: 8000 });
+                      }
+                    }}
+                    onError={(err) => {
+                      console.error('PayPal error:', err);
+                      setPaypalError('PayPal encountered an error. Please try again or use card payment.');
+                    }}
+                    onCancel={() => {
+                      setPaypalError('');
+                    }}
+                  />
+                </PayPalScriptProvider>
+                {paypalError && (
+                  <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px', textAlign: 'center' }}>
+                    {paypalError}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={handlePayPalFallback}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${theme.border}`,
+                  background: '#ffc439',
+                  color: '#003087',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontFamily: "'Libre Franklin', sans-serif",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                Pay with PayPal
+              </button>
+            )}
           </div>
           <div style={{ textAlign: 'center', fontSize: '11px', color: theme.textMuted, marginTop: '10px' }}>
             🔒 Secure payment — choose your preferred method

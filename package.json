@@ -12,6 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^9.0.1",
     "@supabase/supabase-js": "^2.98.0",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
