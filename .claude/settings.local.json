@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(node:*)",
+      "Bash(command -v:*)",
+      "Bash(source ~/.zshrc)",
+      "Bash(npm --version:*)",
+      "Bash(curl:*)",
+      "Bash(bash)",
+      "Bash(xcode-select:*)",
+      "Bash(git --version)",
+      "Bash(export PATH=\"$HOME/local/node-v20.11.1-darwin-x64/bin:$PATH\")",
+      "Bash(npx create-vite@5 . --template react)",
+      "Bash(npm install:*)",
+      "Bash(npx vite build)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(chmod:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:app.heirloom.ag)",
+      "Bash(wc -l /Users/pedrovaldjiu/Documents/BioGrow/src/tabs/*.jsx)",
+      "Bash(ls -lh /Users/pedrovaldjiu/Documents/BioGrow/dist/assets/*.js)",
+      "Bash(wc -l /Users/pedrovaldjiu/Documents/BioGrow/src/tabs/*.jsx /Users/pedrovaldjiu/Documents/BioGrow/src/components/*.jsx /Users/pedrovaldjiu/Documents/BioGrow/src/utils/*.js /Users/pedrovaldjiu/Documents/BioGrow/src/context/*.jsx /Users/pedrovaldjiu/Documents/BioGrow/src/data/crops.js)",
+      "Bash(npx vitest run /tmp/smoke.test.js)",
+      "Bash(npx vitest run --reporter=verbose)",
+      "Bash(npx vitest run)",
+      "Bash(npx vitest run src/utils/helpers.test.js src/utils/auth.test.js src/utils/rotationEngine.test.js)",
+      "Bash(npx vitest run src/utils/demandEngine.test.js)",
+      "Bash(npx vitest run src/components/shared.test.jsx src/components/TabNav.test.jsx)",
+      "Bash(npx vitest run src/context/AppContext.test.jsx)",
+      "Bash(npx vitest run src/tabs/CropsTab.test.jsx src/tabs/HarvestTab.test.jsx src/App.test.jsx)",
+      "Bash(ls -la /Users/pedrovaldjiu/Documents/BioGrow/.git*)",
+      "Bash(ls -la /Users/pedrovaldjiu/Documents/BioGrow/src/**/*.test.*)",
+      "Bash(find /Users/pedrovaldjiu/Documents/BioGrow/src -name \"*.test.*\" -type f -exec wc -l {} +)",
+      "Bash(git init)",
+      "Bash(git add .)",
+      "Bash(git commit -m \"Initial commit: BioGrow market garden planner\")"
+    ]
+  }
+}

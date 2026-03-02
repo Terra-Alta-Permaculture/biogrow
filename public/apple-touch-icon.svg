@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="32" fill="#4a7c59"/>
+  <g transform="translate(90,98)">
+    <path d="M0,20 Q0,-7 0,-28" stroke="#c8e6c9" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M-2,-10 Q-20,-32 -10,-49 Q4,-38 -2,-10Z" fill="#a5d6a7"/>
+    <path d="M2,-18 Q24,-38 14,-56 Q-4,-46 2,-18Z" fill="#81c784"/>
+    <path d="M0,20 Q-7,14 -10,7" stroke="#a5d6a7" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+  <text x="90" y="148" text-anchor="middle" font-family="serif" font-weight="bold" font-size="25" fill="#e8f5e9">BioGrow</text>
+</svg>

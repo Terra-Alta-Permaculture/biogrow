@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#4a7c59"/>
+  <g transform="translate(256,280)">
+    <!-- Stem -->
+    <path d="M0,60 Q0,-20 0,-80" stroke="#c8e6c9" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <!-- Left leaf -->
+    <path d="M-4,-30 Q-60,-90 -30,-140 Q10,-110 -4,-30Z" fill="#a5d6a7"/>
+    <!-- Right leaf -->
+    <path d="M4,-50 Q70,-110 40,-160 Q-10,-130 4,-50Z" fill="#81c784"/>
+    <!-- Small sprout -->
+    <path d="M0,60 Q-20,40 -30,20" stroke="#a5d6a7" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+  <text x="256" y="420" text-anchor="middle" font-family="serif" font-weight="bold" font-size="72" fill="#e8f5e9">BioGrow</text>
+</svg>
